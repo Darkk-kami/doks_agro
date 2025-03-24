@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions: 
+      id-token: write
+      contents: read
 jobs:
   build-and-push:
     name: Build and Push to ECR
@@ -16,6 +19,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Configure GitHub Actions Token
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Darkk-kami/doks_agro.git
 
       - name: Automatic Tagging of Releases
         id: increment-git-tag
