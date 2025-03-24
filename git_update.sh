@@ -20,9 +20,11 @@ echo "Detected Version Bump: $VERSION"
 git fetch --prune --unshallow 2>/dev/null
 CURRENT_VERSION=$(git describe --abbrev=0 --tags 2>/dev/null)
 
-if [[ -z "$CURRENT_VERSION" ]]; then
-  CURRENT_VERSION="v0.1.0"
+if [[ -z "$VERSION" ]]; then
+  echo "No version bump detected, defaulting to patch."
+  VERSION="patch"
 fi
+
 echo "Current Version: $CURRENT_VERSION"
 
 IFS='.' read -ra CURRENT_VERSION_PARTS <<< "${CURRENT_VERSION//v/}"
