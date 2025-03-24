@@ -10,28 +10,34 @@ elif [[ "$LAST_COMMIT" == *"feat"* ]]; then
   VERSION="minor"
 elif [[ "$LAST_COMMIT" == *"fix"* ]]; then
   VERSION="patch"
-else
-  echo "No version change needed."
+fi
+
+# Default to patch if no valid type found
+if [[ -z "$VERSION" ]]; then
+  VERSION="patch"
+  echo "No version bump detected, defaulting to patch."
 fi
 
 echo "Detected Version Bump: $VERSION"
 
-# get highest tag number, and add v0.1.0 if doesn't exist
-git fetch --prune --unshallow 2>/dev/null
-CURRENT_VERSION=$(git describe --abbrev=0 --tags 2>/dev/null)
+# Fetch latest tags
+git fetch --tags --prune 2>/dev/null
+CURRENT_VERSION=$(git describe --tags --abbrev=0 2>/dev/null)
 
-if [[ -z "$VERSION" ]]; then
-  echo "No version bump detected, defaulting to patch."
-  VERSION="patch"
+if [[ -z "$CURRENT_VERSION" || "$CURRENT_VERSION" == "fatal: No names found"* ]]; then
+  echo "No tags found. Defaulting to v0.1.0."
+  CURRENT_VERSION="v0.1.0"
+  git tag "$CURRENT_VERSION"
+  git push --tags
 fi
 
 echo "Current Version: $CURRENT_VERSION"
 
-IFS='.' read -ra CURRENT_VERSION_PARTS <<< "${CURRENT_VERSION//v/}"
-VNUM1=${CURRENT_VERSION_PARTS[0]}
-VNUM2=${CURRENT_VERSION_PARTS[1]}
-VNUM3=${CURRENT_VERSION_PARTS[2]}
-
+# Parse version numbers
+IFS='.' read -ra CURRENT_VERSION_PARTS <<< "${CURRENT_VERSION#v}"
+VNUM1=${CURRENT_VERSION_PARTS[0]:-0}
+VNUM2=${CURRENT_VERSION_PARTS[1]:-1}
+VNUM3=${CURRENT_VERSION_PARTS[2]:-0}
 
 # Bump the correct version number
 if [[ "$VERSION" == "major" ]]; then
@@ -43,29 +49,26 @@ elif [[ "$VERSION" == "minor" ]]; then
   VNUM3=0
 elif [[ "$VERSION" == "patch" ]]; then
   VNUM3=$((VNUM3 + 1))
-else
-  echo "Invalid version type."
-  exit 1
 fi
 
-# create new tag
-NEW_TAG="$VNUM1.$VNUM2.$VNUM3"
+# Create new tag
+NEW_TAG="v$VNUM1.$VNUM2.$VNUM3"
 echo "($VERSION) updating $CURRENT_VERSION to $NEW_TAG"
 
-# get current hash and see if it already has a tag
-GIT_COMMIT=`git rev-parse HEAD`
-NEEDS_TAG=`git describe --contains $GIT_COMMIT 2>/dev/null`
+# Check if the commit is already tagged
+GIT_COMMIT=$(git rev-parse HEAD)
+NEEDS_TAG=$(git describe --contains "$GIT_COMMIT" 2>/dev/null)
 
-# only tag if no tag already
-if [ -z "$NEEDS_TAG" ]; then
+if [[ -z "$NEEDS_TAG" ]]; then
   echo "Tagged with $NEW_TAG"
-  git tag $NEW_TAG
+  git tag "$NEW_TAG"
   git push --tags
   git push
 else
   echo "Already a tag on this commit"
 fi
 
-echo ::set-output name=git-tag::$NEW_TAG
+# GitHub Actions output
+echo "git-tag=$NEW_TAG" >> $GITHUB_ENV
 
 exit 0
