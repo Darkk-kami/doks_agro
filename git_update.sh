@@ -12,7 +12,6 @@ elif [[ "$LAST_COMMIT" == *"fix"* ]]; then
   VERSION="patch"
 else
   echo "No version change needed."
-  exit 0
 fi
 
 echo "Detected Version Bump: $VERSION"
